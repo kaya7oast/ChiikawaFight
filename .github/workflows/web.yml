@@ -28,6 +28,12 @@ jobs:
         run: pip install pygbag
       - name: Build web version
         run: python -m pygbag --build --title "Chiikawa Ball Fight" .
+      - name: Fit portrait screen + match background colour
+        # pygbag's page assumes a 1280x720 landscape game; tell it our real size (540x860)
+        run: |
+          sed -i -E 's/fb_ar[[:space:]]*:[[:space:]]*[0-9.]+/fb_ar : 0.6279/; s/fb_width[[:space:]]*:[[:space:]]*"[0-9]+"/fb_width : "540"/; s/fb_height[[:space:]]*:[[:space:]]*"[0-9]+"/fb_height : "860"/' build/web/index.html
+          sed -i 's|</head>|<style>html,body{background:linear-gradient(#ffe8f2,#cee6ff) fixed !important;}</style></head>|' build/web/index.html
+          grep -E "fb_ar|fb_width|fb_height" build/web/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
