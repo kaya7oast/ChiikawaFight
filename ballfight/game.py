@@ -9,7 +9,9 @@ from .config import WIDTH, HEIGHT, FPS, ARENA_RECT
 from .audio import SFX_BOUNCE
 from . import registry
 from .assets import init_assets
-from .teams import build_team
+from .voices import init_voices
+from .teams import build_side
+from .menu import SelectMenu
 from . import fighters  # noqa: F401  (registers all characters)
 from .scene import build_background, build_arena, draw_shadow, draw_hit_flash, draw_daze_stars
 from .ui import draw_team_ui, draw_vs_badge, draw_winner, draw_footer, BUTTONS, card_rect
@@ -51,16 +53,17 @@ async def main():
     pygame.display.set_caption("Chiikawa Ball Fight")
     clock = pygame.time.Clock()
     init_assets()
+    init_voices()
 
     background = build_background()
     arena_surf, arena_pos = build_arena()
     frame = pygame.Surface((WIDTH, HEIGHT))
 
-    roster = registry.roster_keys()
-    left_idx, right_idx = 0, 1 % len(roster)
+    menu = SelectMenu()
+    screen_mode = "MENU"  # "MENU" (pick fighters) or "FIGHT"
 
     def reset_match():
-        return build_team(roster[left_idx], "LEFT"), build_team(roster[right_idx], "RIGHT"), new_world(), 0.0
+        return build_side(menu.picks("LEFT"), "LEFT"), build_side(menu.picks("RIGHT"), "RIGHT"), new_world(), 0.0
 
     team_left, team_right, world, match_time = reset_match()
     winner, winner_side, winner_anim = None, None, 0.0
@@ -70,6 +73,7 @@ async def main():
         dt = min(clock.tick(FPS) / 1000.0, 0.05)
 
         action = None
+        menu_click = None
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -78,30 +82,48 @@ async def main():
                 if event.key == pygame.K_ESCAPE:
                     pygame.quit()
                     return
-                action = {pygame.K_1: "LEFT", pygame.K_2: "RIGHT",
+                action = {pygame.K_1: "LEFT", pygame.K_2: "RIGHT", pygame.K_m: "MENU",
                           pygame.K_r: "REMATCH", pygame.K_SPACE: "REMATCH"}.get(event.key, action)
+                if screen_mode == "MENU" and event.key in (pygame.K_SPACE, pygame.K_RETURN):
+                    action = "FIGHT"
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 # touch screens send taps as left clicks
-                for name, rect in BUTTONS.items():
-                    if rect.collidepoint(event.pos):
-                        action = name
-                if card_rect("LEFT").collidepoint(event.pos):
-                    action = "LEFT"
-                elif card_rect("RIGHT").collidepoint(event.pos):
-                    action = "RIGHT"
+                if screen_mode == "MENU":
+                    menu_click = event.pos
+                else:
+                    for name, rect in BUTTONS.items():
+                        if rect.collidepoint(event.pos):
+                            action = name
+                    if card_rect("LEFT").collidepoint(event.pos) or card_rect("RIGHT").collidepoint(event.pos):
+                        action = "MENU"
 
+        if screen_mode == "MENU" and menu_click and menu.click(menu_click) == "FIGHT":
+            action = "FIGHT"
         if action:
             pressed[action] = 0.15
-            if action == "LEFT":
-                left_idx = (left_idx + 1) % len(roster)
-            elif action == "RIGHT":
-                right_idx = (right_idx + 1) % len(roster)
-            team_left, team_right, world, match_time = reset_match()
-            winner, winner_side, winner_anim = None, None, 0.0
+            if action == "MENU":
+                screen_mode = "MENU"
+            elif action in ("LEFT", "RIGHT"):
+                menu.cycle(action)
+            elif action == "RANDOM":
+                menu.randomize()
+            if action != "MENU":
+                if action == "FIGHT" or screen_mode == "FIGHT" or action in ("LEFT", "RIGHT"):
+                    screen_mode = "FIGHT"
+                    team_left, team_right, world, match_time = reset_match()
+                    winner, winner_side, winner_anim = None, None, 0.0
         for k in list(pressed):
             pressed[k] -= dt
             if pressed[k] <= 0:
                 del pressed[k]
+
+        if screen_mode == "MENU":
+            frame.blit(background, (0, 0))
+            menu.draw(frame, dt)
+            screen.blit(frame, (0, 0))
+            pygame.display.flip()
+            await asyncio.sleep(0)
+            continue
 
         all_fighters = team_left.fighters + team_right.fighters
 
@@ -124,9 +146,9 @@ async def main():
 
             resolve_ball_collisions(all_fighters)
 
-            if not any(f.alive for f in team_right.fighters):
+            if not any(f.alive and f.core for f in team_right.fighters):
                 winner, winner_side = team_left, "LEFT"
-            elif not any(f.alive for f in team_left.fighters):
+            elif not any(f.alive and f.core for f in team_left.fighters):
                 winner, winner_side = team_right, "RIGHT"
         else:
             winner_anim += dt
@@ -164,7 +186,7 @@ async def main():
                 draw_shadow(frame, f.x, f.y, f.radius)
 
         pairs = [(f, team_right.fighters if f in team_left.fighters else team_left.fighters) for f in all_fighters]
-        for f, enemies in sorted(pairs, key=lambda item: 1 if item[0].in_air else 0):
+        for f, enemies in sorted(pairs, key=lambda item: item[0].draw_layer):
             f.draw(frame, enemies)
             if f.alive and f.hit_flash > 0 and not f.in_air:
                 draw_hit_flash(frame, f.x, f.y, f.radius, f.hit_flash)

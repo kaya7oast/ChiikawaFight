@@ -9,6 +9,7 @@ from ..effects import *
 from ..world_objects import *
 from ..drawing import *
 from ..registry import register_sprite, register_roster
+from ..voices import play_voice
 from .base import BaseFighter
 
 
@@ -50,6 +51,10 @@ class DuoMemberFighter(BaseFighter):
             self.complete_weeding()
         self.state = "READY"
         self.state_timer = 0.50
+        if self.type == "HACHIWARE":
+            play_voice("hachiware_oi", "hachiware_nani")
+        else:
+            play_voice("chiikawa_haaa", "chiikawa_yada")
         if target:
             self.weapon_angle = math.atan2(target.y - self.y, target.x - self.x)
 
@@ -240,4 +245,5 @@ register_roster(
     [("Chiikawa", CHIIKAWA_PINK), (" & ", (150, 155, 165)), ("Hachiware", HACHIWARE_BLUE)],
     ChiikawaHachiwareTeam,
     bar_colors=(CHIIKAWA_PINK, HACHIWARE_BLUE),
+    portraits=["CHIIKAWA", "HACHIWARE"],
 )

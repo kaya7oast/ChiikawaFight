@@ -1,9 +1,10 @@
 """
 Kani (250 HP, 2.95s attack cooldown, 3-move cycle)
-- Attack 1 BOOK TOSS: 3 big books thrown in a triangle (120 deg apart), each bounces off walls
-  5 times, 10 dmg on hit. If all 3 books hit, Momonga charges through 5s later (25 dmg).
-- Attack 2 READING: runs to the middle and reads; random letters fly at the enemy (4 dmg each).
+- Attack 1 BOOK TOSS: 4 big books thrown in a cross (90 deg apart), each bounces off walls
+  5 times, 10 dmg on hit.
+- Attack 2 READING: runs to the middle and reads; random letters fly at the enemy (5 dmg each).
   Takes 50% less damage while reading.
+- Passive MOMONGA ASSIST: every 15s Momonga charges across the arena (35 dmg).
 - Attack 3 CLAW SNIP: two frontal crab-claw snips (like Anoko's claws), each with a short
   lunge toward the enemy, 12 dmg each.
 """
@@ -22,16 +23,18 @@ from ..fonts import get_font
 from ..teams import register_solo
 from ..registry import register_image
 from ..assets import ASSETS
+from ..voices import play_voice
 from .base import BaseFighter
 
 KANI_RED = (232, 96, 84)
-BOOK_COLORS = [(110, 160, 230), (240, 170, 70), (150, 200, 120)]
+MOMONGA_EVERY = 15.0  # seconds between Momonga's assists
+BOOK_COLORS = [(110, 160, 230), (240, 170, 70), (150, 200, 120), (225, 120, 170)]
 
 
 class BookVolley:
     def __init__(self):
         self.hits = 0
-        self.total = 3
+        self.total = 4
 
 
 class BookProjectile:
@@ -66,8 +69,6 @@ class BookProjectile:
                 e.receive_damage(10.0, self.owner, world)
                 self.volley.hits += 1
                 self.alive = False
-                if self.volley.hits == self.volley.total:
-                    self.owner.schedule_momonga(world)
                 return
 
     def draw(self, surf):
@@ -97,7 +98,7 @@ class LetterProjectile:
             return
         for e in enemies:
             if e.alive and not e.in_air and math.hypot(self.x - e.x, self.y - e.y) <= self.radius + e.radius:
-                e.receive_damage(4.0, self.owner, world)
+                e.receive_damage(5.0, self.owner, world)
                 self.alive = False
                 return
 
@@ -163,11 +164,7 @@ class KaniFighter(BaseFighter):
         self.snips_left = 0
         self.snip_timer = 0.0
         self.target = None
-        self.momonga_timers = []
-
-    def schedule_momonga(self, world):
-        self.momonga_timers.append(5.0)
-        world["popups"].append(FloatingPopup(self.x, self.y - 46, "ALL HIT!", MOMONGA_CYAN, WHITE, 18, 1.2))
+        self.momonga_cd = MOMONGA_EVERY
 
     def update(self, dt, enemies, world):
         if not self.alive or self.grabbed_by:
@@ -175,14 +172,14 @@ class KaniFighter(BaseFighter):
         living = [e for e in enemies if e.alive]
         nearest = min(living, key=lambda e: math.hypot(e.x - self.x, e.y - self.y)) if living else None
 
-        # Momonga cameo (runs even while stunned)
-        for i in range(len(self.momonga_timers)):
-            self.momonga_timers[i] -= dt
-        if self.momonga_timers and self.momonga_timers[0] <= 0:
-            self.momonga_timers.pop(0)
+        # Momonga helps out every 15s, no matter what (runs even while stunned)
+        self.momonga_cd -= dt
+        if self.momonga_cd <= 0:
+            self.momonga_cd += MOMONGA_EVERY
             if nearest:
-                world["hazards"].append(DekatsuyoRunner(nearest.x, nearest.y, self, damage=25.0,
-                                                        sprite_key="MOMONGA", color=MOMONGA_CYAN, radius=40, speed=700.0))
+                world["hazards"].append(DekatsuyoRunner(nearest.x, nearest.y, self, damage=35.0,
+                                                        sprite_key="MOMONGA", color=MOMONGA_CYAN, radius=46, speed=1000.0))
+                play_voice("momonga_scream", cooldown=0)
 
         if self.stun_timer > 0:
             self.stun_timer -= dt
@@ -271,8 +268,8 @@ class KaniFighter(BaseFighter):
                 if self.attack_index == 0:
                     aim = math.atan2(nearest.y - self.y, nearest.x - self.x)
                     volley = BookVolley()
-                    for k in range(3):
-                        world["projectiles"].append(BookProjectile(self.x, self.y, aim + k * math.tau / 3, self, volley, BOOK_COLORS[k]))
+                    for k in range(4):  # 4 books, 90 deg apart
+                        world["projectiles"].append(BookProjectile(self.x, self.y, aim + k * math.tau / 4, self, volley, BOOK_COLORS[k]))
                     SFX_SPIN.play()
                 elif self.attack_index == 1:
                     self.state = "READ_MOVE"
@@ -301,8 +298,8 @@ class KaniFighter(BaseFighter):
             if not draw_claw(surf, ex, ey, self.weapon_angle, 34):
                 pygame.draw.circle(surf, KANI_RED, (int(ex), int(ey)), 11)
                 pygame.draw.circle(surf, (150, 40, 40), (int(ex), int(ey)), 11, 2)
-        if self.momonga_timers:
-            t = get_font(11).render(f"Momonga in {self.momonga_timers[0]:.1f}s", True, WHITE)
+        if self.momonga_cd <= 4.0:
+            t = get_font(11).render(f"Momonga in {self.momonga_cd:.1f}s", True, WHITE)
             r = t.get_rect(center=(cx, cy + self.radius + 14)).inflate(8, 2)
             pygame.draw.rect(surf, MOMONGA_CYAN, r, border_radius=6)
             surf.blit(t, t.get_rect(center=r.center))

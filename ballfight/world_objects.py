@@ -63,7 +63,7 @@ class WatermelonSeedProjectile:
         self.y = y
         self.angle = angle
         self.owner = owner
-        self.speed = 430.0
+        self.speed = 520.0
         self.vx = math.cos(angle) * self.speed
         self.vy = math.sin(angle) * self.speed
         self.radius = 8
@@ -79,7 +79,7 @@ class WatermelonSeedProjectile:
         for e in enemies:
             if e.alive and math.hypot(self.x - e.x, self.y - e.y) <= self.radius + e.radius:
                 self.alive = False
-                e.receive_damage(9.0, self.owner, world)
+                e.receive_damage(10.0, self.owner, world)
                 break
 
     def draw(self, surf):

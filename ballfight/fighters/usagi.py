@@ -10,6 +10,7 @@ from ..world_objects import *
 from ..drawing import *
 from ..registry import register_sprite, register_roster
 from ..teams import register_solo
+from ..voices import play_voice
 from .base import BaseFighter
 
 
@@ -39,8 +40,10 @@ class UsagiFighter(BaseFighter):
         self.seed_interval_timer = 0.0
         self.crazy_hit_cooldowns = {}
         self.afterimages = []
+        self.crazy_wall_hits = 0
 
     def complete_eating(self, world):
+        play_voice("usagi_unayaha", cooldown=1.5)
         if self.target_food and self.target_food.alive:
             self.target_food.alive = False
         self.target_food = None
@@ -125,7 +128,14 @@ class UsagiFighter(BaseFighter):
             self.state_timer -= dt
             self.dmg_taken_mult = 0.70  # Takes 30% less damage
             self.afterimages.append((self.x, self.y, 0.16))
-            self.move_and_bounce(dt, speed_override=750.0)
+            if self.move_and_bounce(dt, speed_override=750.0):
+                # every 3rd wall bump he homes in on an enemy instead of bouncing randomly
+                self.crazy_wall_hits += 1
+                if self.crazy_wall_hits % 3 == 0 and living:
+                    tgt = min(living, key=lambda e: math.hypot(e.x - self.x, e.y - self.y))
+                    ang = math.atan2(tgt.y - self.y, tgt.x - self.x)
+                    self.vx, self.vy = math.cos(ang) * 750.0, math.sin(ang) * 750.0
+                    world["effects"].append(RingEffect(self.x, self.y, self.radius + 16, (255, 120, 90)))
             self.weapon_angle += 20.0 * dt
 
             # Frenzy: gobble any food he touches instantly (no eating pause)
@@ -145,7 +155,7 @@ class UsagiFighter(BaseFighter):
                 if e not in self.crazy_hit_cooldowns and not e.in_air:
                     if math.hypot(self.x - e.x, self.y - e.y) <= self.radius + e.radius + 6:
                         self.crazy_hit_cooldowns[e] = 0.25
-                        e.receive_damage(12.0, self, world)
+                        e.receive_damage(14.0, self, world)
 
             if self.state_timer <= 0:
                 self.state = "ROAM"
@@ -176,15 +186,19 @@ class UsagiFighter(BaseFighter):
                     self.state_timer = 1.0
                     self.hit_targets.clear()
                     SFX_SPIN.play()
+                    play_voice("usagi_wula", "usagi_huh")
                 elif self.attack_index == 1:
                     self.state = "SEED_SPIT"
                     self.seeds_to_spit = 5
+                    play_voice("usagi_haiyaha")
                     self.seed_interval_timer = 0.05
                 else:
                     self.state = "CRAZY_BOUNCE"
                     self.state_timer = 5.0
                     self.crazy_hit_cooldowns.clear()
+                    self.crazy_wall_hits = 0
                     SFX_CRAZY.play()
+                    play_voice("usagi_yaha", "usagi_fight", cooldown=0)
                 self.attack_index = (self.attack_index + 1) % 3
 
     def draw(self, surf, enemies):

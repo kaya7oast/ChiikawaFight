@@ -10,6 +10,7 @@ from ..world_objects import *
 from ..drawing import *
 from ..registry import register_sprite, register_roster
 from ..teams import register_solo
+from ..voices import play_voice
 from .base import BaseFighter
 
 
@@ -21,7 +22,7 @@ class MomongaFighter(BaseFighter):
         super().__init__("MOMONGA", x, y, hp=250, color=MOMONGA_CYAN, radius=31, speed=215.0)
         self.cd_max = 3.2
         self.cd_timer = 0.0
-        self.air_duration = 2.0
+        self.air_duration = 1.7
         self.air_timer = 0.0
         self.air_homing_speed = 115.0
         self.jump_count = 0
@@ -69,9 +70,12 @@ class MomongaFighter(BaseFighter):
             self.air_timer = self.air_duration
             self.jump_count += 1
             SFX_JUMP.play()
+            if self.jump_count % 3 != 0:
+                play_voice("momonga_ushya", "momonga_silly", cooldown=2.5)
             if self.jump_count % 3 == 0:
                 target_enemy = random.choice(living) if living else self
                 world["hazards"].append(DekatsuyoRunner(target_enemy.x, target_enemy.y, self))
+                play_voice("momonga_scream", cooldown=0)
 
     def draw(self, surf, enemies):
         if not self.alive:

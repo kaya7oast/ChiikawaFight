@@ -12,8 +12,10 @@ from ..effects import *
 # MODULAR BASE FIGHTER
 # ==========================================
 class BaseFighter:
+    hud = True    # show an HP bar on the team card
+    core = True   # team loses when all *core* fighters are dead (minions like vines/mermaids aren't core)
     # States in which this ball physically bounces off other balls (override per character if needed)
-    COLLIDE_STATES = {"ROAM", "COUNTER", "SPIN", "CRAZY_BOUNCE", "TAIL_STARTUP", "TAIL_SPIN", "MEDUSA_STARTUP"}
+    COLLIDE_STATES = {"ROAM", "COUNTER", "SPIN", "CRAZY_BOUNCE", "TAIL_STARTUP", "TAIL_SPIN", "TAIL_PAUSE", "MEDUSA_STARTUP"}
 
     def __init__(self, char_type, x, y, hp, color, radius=29, speed=225.0):
         self.type = char_type
@@ -47,23 +49,32 @@ class BaseFighter:
         self.kb_wall_damage = False
         self.kb_attacker = None
         self.kb_wall_cd = 0.0
+        self.kb_wall_daze = 0.0    # daze applied when a knockback slams them into a wall
+        self.attached_by = None    # something latched on (e.g. Chiikabu) -> attack bar frozen
+        self.cd_slow_timer = 0.0   # e.g. Siren's flood: attack bar 10% slower while > 0
 
     # ---------- shared status helpers ----------
     def cd_rate(self):
         """Multiply dt by this when filling the attack bar."""
-        return self.cd_rate_mult * (0.5 if self.daze_timer > 0 else 1.0)
+        if self.attached_by is not None and self.attached_by.alive:
+            return 0.0
+        rate = self.cd_rate_mult * (0.5 if self.daze_timer > 0 else 1.0)
+        if self.cd_slow_timer > 0:
+            rate *= 0.9
+        return rate
 
     def apply_daze(self, duration):
         if self.alive:
             self.daze_timer = max(self.daze_timer, duration)
 
-    def apply_knockback(self, vx, vy, attacker=None, wall_damage=False):
+    def apply_knockback(self, vx, vy, attacker=None, wall_damage=False, wall_daze=0.0):
         if not self.alive or self.in_air or self.grabbed_by:
             return
         self.kb_vx += vx
         self.kb_vy += vy
         self.kb_attacker = attacker
         self.kb_wall_damage = self.kb_wall_damage or wall_damage
+        self.kb_wall_daze = max(self.kb_wall_daze, wall_daze)
 
     def update_status(self, dt, world):
         """Called once per frame by the game loop for every fighter."""
@@ -71,10 +82,15 @@ class BaseFighter:
             self.daze_timer -= dt
         if self.kb_wall_cd > 0:
             self.kb_wall_cd -= dt
+        if self.cd_slow_timer > 0:
+            self.cd_slow_timer -= dt
+        if self.attached_by is not None and not self.attached_by.alive:
+            self.attached_by = None
         spd = math.hypot(self.kb_vx, self.kb_vy)
         if spd < 25 or not self.alive or self.in_air or self.grabbed_by:
             self.kb_vx = self.kb_vy = 0.0
             self.kb_wall_damage = False
+            self.kb_wall_daze = 0.0
             return
         self.x += self.kb_vx * dt
         self.y += self.kb_vy * dt
@@ -95,10 +111,19 @@ class BaseFighter:
             dmg = max(3, min(9, int(round(spd / 110))))  # faster slam = more damage
             self.receive_damage(dmg, self.kb_attacker, world)
             world["effects"].append(RingEffect(self.x, self.y, self.radius + 14, (255, 255, 255)))
+            if self.kb_wall_daze > 0:
+                self.apply_daze(self.kb_wall_daze)
+                world["popups"].append(FloatingPopup(self.x, self.y - 50, "DAZED", (245, 190, 60), WHITE, 16, 0.9))
+                self.kb_wall_daze = 0.0
 
     def bounce_speed(self):
         """Speed this ball leaves a ball-to-ball collision with."""
         return self.base_speed
+
+    @property
+    def draw_layer(self):
+        """Higher = drawn later (on top). In-air fighters go on top."""
+        return 1 if self.in_air else 0
 
     @property
     def alive(self):

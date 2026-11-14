@@ -22,10 +22,11 @@ class AnokoFighter(BaseFighter):
     """
     Anoko (320 HP, Bigger radius = 40, 2.9s attack cooldown):
     - Attack 1: Triple Claw Slash in front (0.2s CD between swipes, lunges forward slightly toward
-                the target on each swipe, 15 damage each).
-    - Attack 2: Pounces toward enemy, swings them around, and throws them into a wall (20 damage).
-    - Attack 3: Giant Tail Swipe (0.5s startup, can move during startup and spin, radius = 1/5th map,
-                20 damage).
+                the target on each swipe, 22 damage each).
+    - Attack 2: Pounces toward enemy, swings them around, and throws them into a wall (20 damage,
+                dazed for 4s).
+    - Attack 3: Giant Tail Swipe (0.5s startup, can move throughout, radius = 1/5th map): spins once
+                (15 dmg), pauses 0.4s, spins again (15 dmg).
     - Passive Medusa Stare: Every 2 attacks, 2.0s after finishing the 2nd attack, Anoko channels
                 a 1.2s cone-shaped Medusa stare while continuing to move. Anyone caught in the cone
                 takes 10 damage and is stunned in place for 1.0s (with their attack bar frozen).
@@ -51,6 +52,7 @@ class AnokoFighter(BaseFighter):
         self.throw_vy = 0.0
         self.hit_targets = set()
         self.tail_spin_radius = int(ARENA_SIZE / 5.0) + self.radius
+        self.tail_spins_left = 0
 
     def _finish_main_attack(self):
         self.state = "ROAM"
@@ -86,6 +88,8 @@ class AnokoFighter(BaseFighter):
                     SFX_SLAM.play()
                     v.grabbed_by = None
                     v.receive_damage(20.0, self, world)
+                    v.apply_daze(4.0)
+                    world["popups"].append(FloatingPopup(v.x, v.y - 50, "DAZED", (245, 190, 60), WHITE, 16, 0.9))
                     self.thrown_victim = None
 
         # --- MEDUSA STARE STATE (1.2s startup while moving -> 5 dmg + 1.0s petrify stun) ---
@@ -132,7 +136,7 @@ class AnokoFighter(BaseFighter):
                     dist = math.hypot(dx, dy)
                     ang_diff = abs((math.atan2(dy, dx) - self.weapon_angle + math.pi) % math.tau - math.pi)
                     if dist <= self.radius + e.radius + 72 and ang_diff <= 0.78:
-                        e.receive_damage(15.0, self, world)
+                        e.receive_damage(22.0, self, world)
                 if self.slashes_left <= 0:
                     self._finish_main_attack()
             return
@@ -182,7 +186,8 @@ class AnokoFighter(BaseFighter):
             self.move_and_bounce(dt)
             if self.state_timer <= 0:
                 self.state = "TAIL_SPIN"
-                self.state_timer = 0.50
+                self.state_timer = TAIL_SPIN_TIME
+                self.tail_spins_left = 1  # one more spin after this one
                 self.hit_targets.clear()
                 SFX_SPIN.play()
                 world["effects"].append(RingEffect(self.x, self.y, self.tail_spin_radius, ANOKO_CREAM))
@@ -191,13 +196,29 @@ class AnokoFighter(BaseFighter):
         if self.state == "TAIL_SPIN":
             self.state_timer -= dt
             self.move_and_bounce(dt)
-            self.weapon_angle += 24.0 * dt
+            self.weapon_angle += (math.tau / TAIL_SPIN_TIME) * dt  # exactly one full turn
             for e in living:
                 if e not in self.hit_targets and math.hypot(self.x - e.x, self.y - e.y) <= self.tail_spin_radius + e.radius:
                     self.hit_targets.add(e)
-                    e.receive_damage(20.0, self, world)
+                    e.receive_damage(15.0, self, world)
             if self.state_timer <= 0:
-                self._finish_main_attack()
+                if self.tail_spins_left > 0:
+                    self.tail_spins_left -= 1
+                    self.state = "TAIL_PAUSE"
+                    self.state_timer = 0.4
+                else:
+                    self._finish_main_attack()
+            return
+
+        if self.state == "TAIL_PAUSE":  # 0.4s breather between the two tail spins
+            self.state_timer -= dt
+            self.move_and_bounce(dt)
+            if self.state_timer <= 0:
+                self.state = "TAIL_SPIN"
+                self.state_timer = TAIL_SPIN_TIME
+                self.hit_targets.clear()
+                SFX_SPIN.play()
+                world["effects"].append(RingEffect(self.x, self.y, self.tail_spin_radius, ANOKO_CREAM))
             return
 
         # --- ROAM STATE ---
@@ -250,7 +271,7 @@ class AnokoFighter(BaseFighter):
             pygame.draw.polygon(cone_surf, (175, 95, 225, 220), pts, 3)
             surf.blit(cone_surf, (0, 0))
 
-        if self.state == "TAIL_STARTUP":
+        if self.state in ("TAIL_STARTUP", "TAIL_PAUSE"):
             draw_dashed_circle(surf, ANOKO_CREAM, (cx, cy), self.tail_spin_radius, 2, 24)
             # tail winds up behind her, wiggling
             wind = self.weapon_angle + math.pi + math.sin(self.state_timer * 30) * 0.25
@@ -268,6 +289,7 @@ class AnokoFighter(BaseFighter):
             draw_dashed_circle(surf, MEDUSA_PURPLE, (cx, cy), self.radius + 6, 3, 16)
 
 
+TAIL_SPIN_TIME = 0.3  # seconds for one full tail spin
 _TAIL_CACHE = {}
 
 

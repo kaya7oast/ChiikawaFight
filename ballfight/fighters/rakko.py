@@ -10,6 +10,7 @@ from ..world_objects import *
 from ..drawing import *
 from ..registry import register_sprite, register_roster
 from ..teams import register_solo
+from ..voices import play_voice
 from .base import BaseFighter
 
 
@@ -129,6 +130,7 @@ class RakkoFighter(BaseFighter):
                 self.charge_vx = math.cos(self.weapon_angle) * car_speed
                 self.charge_vy = math.sin(self.weapon_angle) * car_speed
                 SFX_CAR.play()
+                play_voice("rakko_carhonk", cooldown=0)
             return
 
         if self.state == "CAR_CHARGE":

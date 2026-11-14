@@ -30,7 +30,7 @@ jobs:
         run: python -m pygbag --build --title "Chiikawa Ball Fight" .
       - name: Fit portrait screen on phones + match background colour
         # pygbag's page is built for 1280x720 landscape games and squashes portrait ones,
-        # so add a tiny script that keeps our 540x860 game at the right shape, centred.
+        # so add a tiny script that keeps our 540x960 game at the right shape, centred.
         run: |
           python - <<'PYEOF'
           p = "build/web/index.html"
@@ -40,7 +40,7 @@ jobs:
           (function(){
             function fitGame(){
               var c = document.getElementById('canvas'); if (!c) return;
-              var W = 540, H = 860, vw = window.innerWidth, vh = window.innerHeight;
+              var W = 540, H = 960, vw = window.innerWidth, vh = window.innerHeight;
               var s = Math.min(vw / W, vh / H), w = Math.floor(W * s), h = Math.floor(H * s);
               Object.assign(c.style, {position:'fixed', width:w+'px', height:h+'px',
                 left:Math.floor((vw-w)/2)+'px', top:Math.floor((vh-h)/2)+'px', margin:'0', outline:'none'});

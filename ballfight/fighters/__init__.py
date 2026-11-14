@@ -12,3 +12,5 @@ from . import anoko  # noqa: F401
 from . import kurimanju  # noqa: F401
 from . import shisa  # noqa: F401
 from . import kani  # noqa: F401
+from . import chiikabu  # noqa: F401
+from . import siren  # noqa: F401

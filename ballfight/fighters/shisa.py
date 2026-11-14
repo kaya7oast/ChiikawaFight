@@ -1,10 +1,10 @@
 """
 Shisa (250 HP, 2.9s attack cooldown, 2-move cycle)
-- Attack 1 RAMEN LOB: lobs a ramen bowl at the enemy plus a 2nd bowl at a random spot. 15 dmg on landing hit, leaves a hot
-  ramen pool for 7s that burns 5 dmg/second to enemies standing in it.
-- Attack 2 YOROI-SAN: her sensei charges across the arena like Dekatsuyo, 30 dmg.
-- Passive STUDY: every 5s she stops (attack bar paused) and studies for 1.5s, taking 20% less
-  damage. Afterwards all her attacks permanently gain +5 dmg (not the ramen pool burn).
+- Attack 1 RAMEN LOB: lobs a ramen bowl at the enemy plus a 2nd bowl at a random spot. 10 dmg on landing hit, leaves a hot
+  ramen pool for 10s that burns 5 dmg/second to enemies standing in it.
+- Attack 2 YOROI-SAN: her sensei charges across the arena like Dekatsuyo, 20 dmg.
+- Passive STUDY: every 5s she stops (attack bar paused) and studies for 1.0s, taking 20% less
+  damage. Afterwards all her attacks permanently gain +7 dmg (not the ramen pool burn).
 """
 import math
 import random
@@ -37,11 +37,11 @@ def draw_ramen_bowl(surf, cx, cy, s=1.0):
 
 
 class RamenPool:
-    """Floor hazard (world['floor']): 5 dmg per second to enemies inside, lasts 7s."""
+    """Floor hazard (world['floor']): 5 dmg per second to enemies inside, lasts 10s."""
     def __init__(self, x, y, owner):
         self.x, self.y, self.owner = x, y, owner
         self.radius = 100  # 2.5x bigger pool
-        self.life = 7.0
+        self.life = 10.0
         self.alive = True
         self.tick = {}
         self.t = 0.0
@@ -154,16 +154,16 @@ class ShisaFighter(BaseFighter):
             if self.state_timer <= 0:
                 self.state = "ROAM"
                 self.dmg_taken_mult = 1.0
-                self.bonus += 5
+                self.bonus += 7
                 self.study_timer = 5.0
                 SFX_WEED.play()
-                world["popups"].append(FloatingPopup(self.x, self.y - 44, f"+5 DMG ({self.bonus})", SHISA_ORANGE, WHITE, 18, 1.1))
+                world["popups"].append(FloatingPopup(self.x, self.y - 44, f"+7 DMG ({self.bonus})", SHISA_ORANGE, WHITE, 18, 1.1))
             return
 
         self.study_timer -= dt
         if self.study_timer <= 0:
             self.state = "STUDY"
-            self.state_timer = 1.5
+            self.state_timer = 1.0
             return
 
         self.move_and_bounce(dt)
@@ -177,13 +177,13 @@ class ShisaFighter(BaseFighter):
                     ty = nearest.y + nearest.vy * 0.35
                     tx = max(ARENA_RECT.left + 30, min(ARENA_RECT.right - 30, tx))
                     ty = max(ARENA_RECT.top + 30, min(ARENA_RECT.bottom - 30, ty))
-                    world["projectiles"].append(RamenBowlLob(self.x, self.y, tx, ty, self, 15 + self.bonus))
+                    world["projectiles"].append(RamenBowlLob(self.x, self.y, tx, ty, self, 10 + self.bonus))
                     rx = random.randint(ARENA_RECT.left + 60, ARENA_RECT.right - 60)
                     ry = random.randint(ARENA_RECT.top + 60, ARENA_RECT.bottom - 60)
-                    world["projectiles"].append(RamenBowlLob(self.x, self.y, rx, ry, self, 15 + self.bonus))
+                    world["projectiles"].append(RamenBowlLob(self.x, self.y, rx, ry, self, 10 + self.bonus))
                     SFX_JUMP.play()
                 else:
-                    world["hazards"].append(YoroiRunner(nearest.x, nearest.y, self, 30 + self.bonus))
+                    world["hazards"].append(YoroiRunner(nearest.x, nearest.y, self, 20 + self.bonus))
                 self.attack_index = (self.attack_index + 1) % 2
 
     def draw(self, surf, enemies):

@@ -5,13 +5,18 @@ import pygame
 # ==========================================
 # WINDOW & ARENA CONFIGURATION
 # ==========================================
-WIDTH, HEIGHT = 540, 860
-ARENA_SIZE = 460
-ARENA_RECT = pygame.Rect((WIDTH - ARENA_SIZE) // 2, 210, ARENA_SIZE, ARENA_SIZE)
+WIDTH, HEIGHT = 540, 960            # 9:16, fits phones nicely
+ARENA_W, ARENA_H = 500, 560
+ARENA_SIZE = ARENA_W                # (kept for older code that assumed a square arena)
+ARENA_RECT = pygame.Rect((WIDTH - ARENA_W) // 2, 210, ARENA_W, ARENA_H)
 FPS = 60
 
 # Draw the coloured ball behind characters that have a picture?
 SHOW_BALL_UNDER_PICTURES = False
+
+# Character voice clips from the sounds/ folder
+VOICES_ON = True
+VOICE_VOLUME = 0.55
 
 ASSET_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
 

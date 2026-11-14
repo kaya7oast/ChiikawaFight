@@ -2,9 +2,9 @@
 Kurimanju (250 HP, 2.85s attack cooldown, 2-move cycle)
 - Attack 1 BURP: drinks, then a shockwave hits the whole arena. Closer = more damage (28 -> 5)
   and more knockback.
-- Attack 2 STICK SWIPE: short lunge in and swipes: 17 dmg, heavy knockback (wall slams hurt 3-9
+- Attack 2 STICK SWIPE: lunges in and swipes: 17 dmg, heavy knockback (wall slams hurt 3-9
   depending on speed), and dazes for 3s (enemy attack bar fills 50% slower).
-- Passive BEER: every 10s drinks a beer, equal chance of one effect until the next beer:
+- Passive BEER: every 10s drinks a beer, 30% each good / 20% each bad effect until the next beer:
   +35% damage | +15% defence | takes 20% more damage | attacks 30% slower.
 """
 import math
@@ -23,8 +23,9 @@ from .base import BaseFighter
 
 KURI_BROWN = (176, 118, 70)
 BEER_GOLD = (246, 196, 60)
-ARENA_DIAG = math.hypot(ARENA_SIZE, ARENA_SIZE)
+ARENA_DIAG = math.hypot(ARENA_RECT.width, ARENA_RECT.height)
 
+BEER_WEIGHTS = [30, 30, 20, 20]  # good, good, bad, bad (percent)
 BEER_EFFECTS = [
     # (label, colour, dmg_mult, dmg_taken_mult, cd_rate_mult)
     ("ATK +35%", (235, 90, 70), 1.35, 1.0, 1.0),
@@ -84,7 +85,7 @@ class KurimanjuFighter(BaseFighter):
 
     # ---- passive ----
     def drink_beer(self, world):
-        label, col, dm, dt_mult, cdm = random.choice(BEER_EFFECTS)
+        label, col, dm, dt_mult, cdm = random.choices(BEER_EFFECTS, weights=BEER_WEIGHTS)[0]
         self.buff = (label, col)
         self.dmg_mult, self.dmg_taken_mult, self.cd_rate_mult = dm, dt_mult, cdm
         self.beer_anim = 0.7
@@ -176,7 +177,7 @@ class KurimanjuFighter(BaseFighter):
                     self.beer_anim = 0.55
                 else:
                     self.state = "SWIPE_DASH"
-                    self.state_timer = 0.28  # shorter dash (was 0.55s ~ 300px, now ~155px)
+                    self.state_timer = 0.55  # dash range (~300px)
                     self.target = nearest
                 self.attack_index = (self.attack_index + 1) % 2
 

@@ -26,12 +26,13 @@ def register_sprite(char_type, color, image=None, name=None):
     }
 
 
-def register_roster(key, title_parts, build, bar_colors=None):
+def register_roster(key, title_parts, build, bar_colors=None, portraits=None):
     """
     key         - unique id, e.g. "MOMONGA"
     title_parts - [(text, colour), ...] shown at the top of the team card
     build       - callable(side) -> team object (needs .fighters, .update(), .cooldown_ratio)
     bar_colors  - (left, right) gradient colours for the attack-cooldown bar
+    portraits   - sprite keys shown on the select screen (default: [key])
     """
     first_col = title_parts[0][1]
     ROSTER[key] = {
@@ -40,6 +41,7 @@ def register_roster(key, title_parts, build, bar_colors=None):
         "name": "".join(t for t, _ in title_parts),
         "build": build,
         "bar_colors": bar_colors or (first_col, first_col),
+        "portraits": portraits or [key],
     }
 
 
