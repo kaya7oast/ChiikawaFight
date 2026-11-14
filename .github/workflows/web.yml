@@ -28,12 +28,32 @@ jobs:
         run: pip install pygbag
       - name: Build web version
         run: python -m pygbag --build --title "Chiikawa Ball Fight" .
-      - name: Fit portrait screen + match background colour
-        # pygbag's page assumes a 1280x720 landscape game; tell it our real size (540x860)
+      - name: Fit portrait screen on phones + match background colour
+        # pygbag's page is built for 1280x720 landscape games and squashes portrait ones,
+        # so add a tiny script that keeps our 540x860 game at the right shape, centred.
         run: |
-          sed -i -E 's/fb_ar[[:space:]]*:[[:space:]]*[0-9.]+/fb_ar : 0.6279/; s/fb_width[[:space:]]*:[[:space:]]*"[0-9]+"/fb_width : "540"/; s/fb_height[[:space:]]*:[[:space:]]*"[0-9]+"/fb_height : "860"/' build/web/index.html
-          sed -i 's|</head>|<style>html,body{background:linear-gradient(#ffe8f2,#cee6ff) fixed !important;}</style></head>|' build/web/index.html
-          grep -E "fb_ar|fb_width|fb_height" build/web/index.html
+          python - <<'PYEOF'
+          p = "build/web/index.html"
+          html = open(p, encoding="utf-8").read()
+          style = "<style>html,body{background:linear-gradient(#ffe8f2,#cee6ff) fixed !important;}canvas{outline:none}</style>"
+          script = """<script>
+          (function(){
+            function fitGame(){
+              var c = document.getElementById('canvas'); if (!c) return;
+              var W = 540, H = 860, vw = window.innerWidth, vh = window.innerHeight;
+              var s = Math.min(vw / W, vh / H), w = Math.floor(W * s), h = Math.floor(H * s);
+              Object.assign(c.style, {position:'fixed', width:w+'px', height:h+'px',
+                left:Math.floor((vw-w)/2)+'px', top:Math.floor((vh-h)/2)+'px', margin:'0', outline:'none'});
+            }
+            window.addEventListener('resize', function(){ setTimeout(fitGame, 150); });
+            window.addEventListener('load', fitGame);
+            setInterval(fitGame, 1000);
+          })();
+          </script>"""
+          html = html.replace("</head>", style + "</head>", 1).replace("</body>", script + "</body>", 1)
+          open(p, "w", encoding="utf-8").write(html)
+          print("patched:", "fitGame" in html)
+          PYEOF
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
