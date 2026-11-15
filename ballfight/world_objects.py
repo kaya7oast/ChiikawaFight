@@ -57,13 +57,14 @@ class UsagiFoodItem:
 
 
 class WatermelonSeedProjectile:
-    """Usagi's 2nd attack: 5 watermelon seeds at medium speed, 9 damage each."""
+    """Usagi's 2nd attack: 5 fast watermelon seeds, 9 damage each, 1 wall bounce each."""
     def __init__(self, x, y, angle, owner):
         self.x = x
         self.y = y
         self.angle = angle
         self.owner = owner
-        self.speed = 520.0
+        self.speed = 760.0
+        self.bounces = 1
         self.vx = math.cos(angle) * self.speed
         self.vy = math.sin(angle) * self.speed
         self.radius = 8
@@ -73,13 +74,23 @@ class WatermelonSeedProjectile:
         self.x += self.vx * dt
         self.y += self.vy * dt
         if not ARENA_RECT.collidepoint(self.x, self.y):
-            self.alive = False
-            return
+            if self.bounces <= 0:
+                self.alive = False
+                return
+            self.bounces -= 1
+            if self.x < ARENA_RECT.left or self.x > ARENA_RECT.right:
+                self.vx = -self.vx
+            if self.y < ARENA_RECT.top or self.y > ARENA_RECT.bottom:
+                self.vy = -self.vy
+            self.x = max(ARENA_RECT.left + 1, min(ARENA_RECT.right - 1, self.x))
+            self.y = max(ARENA_RECT.top + 1, min(ARENA_RECT.bottom - 1, self.y))
+            self.angle = math.atan2(self.vy, self.vx)
+            SFX_BOUNCE.play()
 
         for e in enemies:
             if e.alive and math.hypot(self.x - e.x, self.y - e.y) <= self.radius + e.radius:
                 self.alive = False
-                e.receive_damage(10.0, self.owner, world)
+                e.receive_damage(9.0, self.owner, world)
                 break
 
     def draw(self, surf):

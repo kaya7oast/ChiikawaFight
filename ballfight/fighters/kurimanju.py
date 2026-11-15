@@ -1,11 +1,11 @@
 """
 Kurimanju (250 HP, 2.85s attack cooldown, 2-move cycle)
-- Attack 1 BURP: drinks, then a shockwave hits the whole arena. Closer = more damage (28 -> 5)
-  and more knockback.
+- Attack 1 BURP: drinks, then TWO shockwaves hit the whole arena (0.4s apart). Each: closer =
+  more damage (20 -> 5) and more knockback.
 - Attack 2 STICK SWIPE: lunges in and swipes: 17 dmg, heavy knockback (wall slams hurt 3-9
   depending on speed), and dazes for 3s (enemy attack bar fills 50% slower).
 - Passive BEER: every 10s drinks a beer, 30% each good / 20% each bad effect until the next beer:
-  +35% damage | +15% defence | takes 20% more damage | attacks 30% slower.
+  +35% damage | +25% defence | takes 20% more damage | attacks 30% slower.
 """
 import math
 import random
@@ -29,7 +29,7 @@ BEER_WEIGHTS = [30, 30, 20, 20]  # good, good, bad, bad (percent)
 BEER_EFFECTS = [
     # (label, colour, dmg_mult, dmg_taken_mult, cd_rate_mult)
     ("ATK +35%", (235, 90, 70), 1.35, 1.0, 1.0),
-    ("DEF +15%", (90, 150, 230), 1.0, 0.85, 1.0),
+    ("DEF +25%", (90, 150, 230), 1.0, 0.75, 1.0),
     ("DEF -20%", (150, 110, 170), 1.0, 1.20, 1.0),
     ("SLOW -30%", (130, 130, 140), 1.0, 1.0, 0.70),
 ]
@@ -103,7 +103,7 @@ class KurimanjuFighter(BaseFighter):
                 continue
             d = math.hypot(e.x - self.x, e.y - self.y)
             close = max(0.0, min(1.0, 1.0 - d / (ARENA_DIAG * 0.85)))
-            e.receive_damage((5 + 23 * close) * self.dmg_mult, self, world)
+            e.receive_damage((5 + 15 * close) * self.dmg_mult, self, world)
             if d > 0:
                 push = 200 + 700 * close
                 e.apply_knockback((e.x - self.x) / d * push, (e.y - self.y) / d * push, self)
@@ -125,6 +125,14 @@ class KurimanjuFighter(BaseFighter):
         nearest = min(living, key=lambda e: math.hypot(e.x - self.x, e.y - self.y)) if living else None
 
         if self.state == "BURP_DRINK":  # tilting the mug back
+            self.state_timer -= dt
+            if self.state_timer <= 0:
+                self.do_burp(living, world)
+                self.state = "BURP_ECHO"
+                self.state_timer = 0.4
+            return
+
+        if self.state == "BURP_ECHO":  # second shockwave
             self.state_timer -= dt
             if self.state_timer <= 0:
                 self.do_burp(living, world)

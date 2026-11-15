@@ -13,17 +13,20 @@ from ..teams import register_solo
 from ..voices import play_voice
 from .base import BaseFighter
 
+SPIN_TIME = 1.2  # three full spins
+
 
 # ==========================================
-# CHARACTER 4: USAGI (2.9s CD, Spin 22 / 5 Seeds x 9 / 5s Crazy Bounce 10 dmg + 30% DR)
+# CHARACTER 4: USAGI (2.8s CD, Spin 3x12 / 5 Seeds x 9 / 5s Crazy Bounce + 30% DR)
 # ==========================================
 class UsagiFighter(BaseFighter):
     """
     Usagi (250 HP, 2.9s attack cooldown, 3-move cycle):
-    - Attack 1: 1.0s active spinning stick hitbox around him (22 damage).
-    - Attack 2: Spits 5 watermelon seeds toward the enemy at medium speed (9 damage each).
+    - Attack 1: 3-hit spin (12 damage per hit), slightly tracking the enemy.
+    - Attack 2: Spits 5 fast watermelon seeds toward the enemy (9 damage each, 1 wall bounce each).
     - Attack 3: Crazy Bounce Frenzy for 5.0s! Speeds up (2.3x), takes 30% less damage, and deals
-                10 damage whenever he collides with an enemy.
+                14 damage whenever he collides with an enemy. +0.2s per dessert eaten since the
+                last Crazy Bounce (resets after each one).
     - Passive Food: Every 2.0s, 30% chance for food to spawn. Usagi eats for 0.8s (pausing CD)
                     to heal +15 HP; enemies touching it first heal +1 HP.
     """
@@ -41,9 +44,13 @@ class UsagiFighter(BaseFighter):
         self.crazy_hit_cooldowns = {}
         self.afterimages = []
         self.crazy_wall_hits = 0
+        self.desserts_eaten = 0
 
     def complete_eating(self, world):
         play_voice("usagi_unayaha", cooldown=1.5)
+        self.desserts_eaten += 1
+        world["popups"].append(FloatingPopup(self.x, self.y - 52, f"crazy +0.2s ({5 + 0.2 * self.desserts_eaten:.1f}s)",
+                                             USAGI_YELLOW, WHITE, 14, 1.0))
         if self.target_food and self.target_food.alive:
             self.target_food.alive = False
         self.target_food = None
@@ -91,15 +98,25 @@ class UsagiFighter(BaseFighter):
                 self.state = "ROAM"
             return
 
-        # ATTACK 1: 1.0s Active Spin Hitbox (22 Damage)
+        # ATTACK 1: triple spin (3 x 12 dmg), steering gently toward the enemy
         if self.state == "SPIN":
+            prev_turn = int((SPIN_TIME - self.state_timer) / (SPIN_TIME / 3))
             self.state_timer -= dt
+            turn = min(2, int((SPIN_TIME - self.state_timer) / (SPIN_TIME / 3)))
+            if turn != prev_turn:
+                self.hit_targets.clear()  # new spin -> can hit again
+            if nearest:  # slight tracking: rotate velocity toward the enemy
+                want = math.atan2(nearest.y - self.y, nearest.x - self.x)
+                cur = math.atan2(self.vy, self.vx)
+                diff = (want - cur + math.pi) % math.tau - math.pi
+                cur += max(-2.6 * dt, min(2.6 * dt, diff))
+                self.vx, self.vy = math.cos(cur) * self.base_speed, math.sin(cur) * self.base_speed
             self.move_and_bounce(dt)
-            self.weapon_angle += 26.0 * dt
+            self.weapon_angle += (3 * math.tau / SPIN_TIME) * dt
             for e in living:
                 if e not in self.hit_targets and math.hypot(self.x - e.x, self.y - e.y) <= self.radius + e.radius + 54:
                     self.hit_targets.add(e)
-                    e.receive_damage(25.0, self, world)
+                    e.receive_damage(12.0, self, world)
             if self.state_timer <= 0:
                 self.state = "ROAM"
                 self.cd_timer = 0.0
@@ -183,7 +200,7 @@ class UsagiFighter(BaseFighter):
                 self.cd_timer = 0.0
                 if self.attack_index == 0:
                     self.state = "SPIN"
-                    self.state_timer = 1.0
+                    self.state_timer = SPIN_TIME
                     self.hit_targets.clear()
                     SFX_SPIN.play()
                     play_voice("usagi_wula", "usagi_huh")
@@ -194,7 +211,8 @@ class UsagiFighter(BaseFighter):
                     self.seed_interval_timer = 0.05
                 else:
                     self.state = "CRAZY_BOUNCE"
-                    self.state_timer = 5.0
+                    self.state_timer = 5.0 + 0.2 * self.desserts_eaten  # +0.2s per dessert eaten
+                    self.desserts_eaten = 0  # bonus used up -> resets
                     self.crazy_hit_cooldowns.clear()
                     self.crazy_wall_hits = 0
                     SFX_CRAZY.play()

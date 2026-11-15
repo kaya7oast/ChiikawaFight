@@ -50,15 +50,15 @@ class BaseFighter:
         self.kb_attacker = None
         self.kb_wall_cd = 0.0
         self.kb_wall_daze = 0.0    # daze applied when a knockback slams them into a wall
-        self.attached_by = None    # something latched on (e.g. Chiikabu) -> attack bar frozen
+        self.attached_by = None    # something latched on (e.g. Chiikabu) -> attack bar 30% slower
         self.cd_slow_timer = 0.0   # e.g. Siren's flood: attack bar 10% slower while > 0
 
     # ---------- shared status helpers ----------
     def cd_rate(self):
         """Multiply dt by this when filling the attack bar."""
-        if self.attached_by is not None and self.attached_by.alive:
-            return 0.0
         rate = self.cd_rate_mult * (0.5 if self.daze_timer > 0 else 1.0)
+        if self.attached_by is not None and self.attached_by.alive:
+            rate *= 0.7  # latched on (Chiikabu): attack bar 30% slower
         if self.cd_slow_timer > 0:
             rate *= 0.9
         return rate

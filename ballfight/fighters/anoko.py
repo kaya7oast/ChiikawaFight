@@ -16,7 +16,7 @@ from .base import BaseFighter
 
 
 # ==========================================
-# CHARACTER 5: ANOKO (300 HP, 3.0s CD, Lunge Claws / Pounce-Throw / Moving Tail 20 / Moving Medusa)
+# CHARACTER 5: ANOKO (320 HP, 2.9s CD, Lunge Claws / Pounce-Throw / Moving Tail 20 / Moving Medusa)
 # ==========================================
 class AnokoFighter(BaseFighter):
     """
@@ -26,7 +26,8 @@ class AnokoFighter(BaseFighter):
     - Attack 2: Pounces toward enemy, swings them around, and throws them into a wall (20 damage,
                 dazed for 4s).
     - Attack 3: Giant Tail Swipe (0.5s startup, can move throughout, radius = 1/5th map): spins once
-                (15 dmg), pauses 0.4s, spins again (15 dmg).
+                (15 dmg), pauses 0.4s, spins again (15 dmg). The tail swats away (destroys) any
+                enemy projectiles inside its radius while spinning.
     - Passive Medusa Stare: Every 2 attacks, 2.0s after finishing the 2nd attack, Anoko channels
                 a 1.2s cone-shaped Medusa stare while continuing to move. Anyone caught in the cone
                 takes 10 damage and is stunned in place for 1.0s (with their attack bar frozen).
@@ -201,6 +202,13 @@ class AnokoFighter(BaseFighter):
                 if e not in self.hit_targets and math.hypot(self.x - e.x, self.y - e.y) <= self.tail_spin_radius + e.radius:
                     self.hit_targets.add(e)
                     e.receive_damage(15.0, self, world)
+            # tail swats enemy projectiles out of the air
+            for p in world["projectiles"]:
+                if (p.alive and getattr(p, "owner", None) in enemies
+                        and math.hypot(p.x - self.x, p.y - self.y) <= self.tail_spin_radius):
+                    p.alive = False
+                    for _ in range(6):
+                        world["particles"].append(Particle(p.x, p.y, ANOKO_CREAM, 140))
             if self.state_timer <= 0:
                 if self.tail_spins_left > 0:
                     self.tail_spins_left -= 1

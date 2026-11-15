@@ -1,7 +1,7 @@
 """
 Shisa (250 HP, 2.9s attack cooldown, 2-move cycle)
 - Attack 1 RAMEN LOB: lobs a ramen bowl at the enemy plus a 2nd bowl at a random spot. 10 dmg on landing hit, leaves a hot
-  ramen pool for 10s that burns 5 dmg/second to enemies standing in it.
+  ramen pool for 9s that burns 5 dmg/second to enemies standing in it.
 - Attack 2 YOROI-SAN: her sensei charges across the arena like Dekatsuyo, 20 dmg.
 - Passive STUDY: every 5s she stops (attack bar paused) and studies for 1.0s, taking 20% less
   damage. Afterwards all her attacks permanently gain +7 dmg (not the ramen pool burn).
@@ -37,11 +37,11 @@ def draw_ramen_bowl(surf, cx, cy, s=1.0):
 
 
 class RamenPool:
-    """Floor hazard (world['floor']): 5 dmg per second to enemies inside, lasts 10s."""
+    """Floor hazard (world['floor']): 5 dmg per second to enemies inside, lasts 9s."""
     def __init__(self, x, y, owner):
         self.x, self.y, self.owner = x, y, owner
         self.radius = 100  # 2.5x bigger pool
-        self.life = 10.0
+        self.life = 9.0
         self.alive = True
         self.tick = {}
         self.t = 0.0

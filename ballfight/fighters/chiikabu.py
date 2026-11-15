@@ -4,7 +4,7 @@ FORM 1 - small beetle: 50 HP, 2.5s attack cooldown. When it "dies" it transforms
 - Attack 1 HORN CHARGE: slows down, vibrates, then rushes the enemy: 10 dmg + heavy knockback.
   Being slammed into a wall hurts a little and dazes them (attack bar 50% slower for 3s).
 - Attack 2 LATCH ON: pounces and sticks to the enemy for 2s: 5 dmg every 0.5s and their attack
-  bar stops filling. While latched it takes 30% less damage and reflects 20% of the damage it
+  bar fills 30% slower. While latched it takes 30% less damage and reflects 20% of the damage it
   takes back at the attacker. Taking more than 30 dmg while latched throws it off: stunned 2s.
 FORM 2 - big muscle form: 150 HP, 2.9s attack cooldown.
 - Attack 1 DIVE: flies up for 1s (untouchable, drifts toward the enemy) and crashes down, 30 dmg.

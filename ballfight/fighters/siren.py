@@ -21,7 +21,29 @@ from ..effects import *
 from ..world_objects import *
 from ..drawing import *
 from ..registry import register_sprite, register_roster
+from ..fonts import get_font
 from .base import BaseFighter
+
+TAIL_WINDUP_TIME = 0.6
+
+
+def draw_fish_tail(surf, cx, cy, ang, length, col):
+    """A big two-lobed fish tail sticking out of (cx, cy) toward `ang`."""
+    ux, uy = math.cos(ang), math.sin(ang)
+    px, py = -uy, ux
+    w0, w1 = length * 0.28, length * 0.12
+    base = [(cx + px * w0, cy + py * w0), (cx - px * w0, cy - py * w0)]
+    nx, ny = cx + ux * length * 0.75, cy + uy * length * 0.75          # narrow 'wrist'
+    tipL = (cx + ux * length * 1.15 + px * length * 0.55, cy + uy * length * 1.15 + py * length * 0.55)
+    tipR = (cx + ux * length * 1.15 - px * length * 0.55, cy + uy * length * 1.15 - py * length * 0.55)
+    notch = (cx + ux * length * 0.98, cy + uy * length * 0.98)
+    pts = [base[0], (nx + px * w1, ny + py * w1), tipL, notch, tipR, (nx - px * w1, ny - py * w1), base[1]]
+    pygame.draw.polygon(surf, col, pts)
+    pygame.draw.polygon(surf, (30, 70, 95), pts, 3)
+    for k in (0.3, 0.5):  # scale lines
+        a = (cx + ux * length * k + px * w0 * 0.8, cy + uy * length * k + py * w0 * 0.8)
+        b = (cx + ux * length * k - px * w0 * 0.8, cy + uy * length * k - py * w0 * 0.8)
+        pygame.draw.arc(surf, (40, 110, 140), (min(a[0], b[0]) - 4, min(a[1], b[1]) - 4, abs(a[0] - b[0]) + 8, abs(a[1] - b[1]) + 8), 0, math.pi, 2)
 
 SIREN_TEAL = (60, 165, 200)
 MERMAID_PINK = (240, 135, 170)
@@ -127,6 +149,7 @@ class Vine:
         for e in enemies:
             if e.alive and not e.in_air and e.core and math.hypot(e.x - self.x, e.y - self.y) <= rng + e.radius:
                 e.receive_damage(self.owner.vine_damage(), self.owner, world)
+                self.owner.count_vine_hit(e, world)
                 self.whip_anim = 0.22
                 self.whip_to = (e.x, e.y)
                 SFX_CLAW.play()
@@ -277,6 +300,7 @@ class SirenFighter(BaseFighter):
         self.flooding = False
         self.team = None
         self.note_timer = 0.0
+        self.vine_hits = {}
 
     def vine_range(self):
         return 70.0 * (1.2 if self.flooding else 1.0)
@@ -307,6 +331,15 @@ class SirenFighter(BaseFighter):
             for _ in range(6):
                 world["particles"].append(Particle(x, y, VINE_GREEN, 90))
         SFX_WEED.play()
+
+    def count_vine_hit(self, e, world):
+        """Every 5th vine hit on the same enemy stuns them for 3s."""
+        n = self.vine_hits.get(e, 0) + 1
+        if n >= 5:
+            n = 0
+            e.apply_stun(3.0, world)
+            world["popups"].append(FloatingPopup(e.x, e.y - 54, "TANGLED! (stun 3s)", VINE_GREEN, WHITE, 16, 1.2))
+        self.vine_hits[e] = n
 
     def tail_slam(self, living, world):
         SFX_SLAM.play()
@@ -357,7 +390,8 @@ class SirenFighter(BaseFighter):
                     self.state, self.state_timer = "SING", 1.0
                     SFX_JUMP.play()
                 else:
-                    self.state, self.state_timer = "TAIL_WINDUP", 0.35
+                    self.state, self.state_timer = "TAIL_WINDUP", TAIL_WINDUP_TIME
+                    SFX_WARN.play()
                 self.attack_index = (self.attack_index + 1) % 2
 
     def draw(self, surf, enemies):
@@ -369,11 +403,15 @@ class SirenFighter(BaseFighter):
                 r = self.radius + 10 + k * 12 + int((pygame.time.get_ticks() * 0.05) % 12)
                 pygame.draw.circle(surf, (150, 215, 245), (cx, cy), r, 2)
         vis_r = int(self.radius * 1.35)  # her picture is bigger than her hitbox
-        if self.bonus:  # enraged glow, behind the picture
-            pygame.draw.circle(surf, (255, 170, 160), (cx, cy), vis_r + 4)
-            pygame.draw.circle(surf, (235, 80, 70), (cx, cy), vis_r + 4, 3)
         if self.state == "TAIL_WINDUP":
-            draw_dashed_circle(surf, SIREN_TEAL, (cx, cy), vis_r + 8, 3, 18)
+            p = 1.0 - self.state_timer / TAIL_WINDUP_TIME          # 0 -> 1 as the slam nears
+            # tail rises up behind her and wiggles, then (at p=1) slams down
+            ang = -math.pi / 2 + math.sin(p * 18) * 0.25 * (1 - p)
+            draw_fish_tail(surf, cx, cy, ang, int(self.radius * (1.2 + 0.9 * p)), (90, 190, 220))
+            # warning: pulsing ring + "!"
+            pr = vis_r + 10 + int(math.sin(p * 30) * 4)
+            pygame.draw.circle(surf, (240, 90, 80), (cx, cy), pr, 3)
+            draw_outlined_text(surf, get_font(30), "!", (240, 90, 80), WHITE, (cx, cy - vis_r - 34), 2)
         draw_ball_avatar(surf, self.type, cx, cy, self.radius)
         if self.stun_timer > 0:
             draw_dashed_circle(surf, MEDUSA_PURPLE, (cx, cy), self.radius + 6, 3, 16)

@@ -20,7 +20,7 @@ from .base import BaseFighter
 class RakkoFighter(BaseFighter):
     def __init__(self, x, y):
         super().__init__("RAKKO", x, y, hp=250, color=RAKKO_BROWN, radius=31, speed=225.0)
-        self.cd_max = 2.8
+        self.cd_max = 2.78
         self.cd_timer = 0.0
         self.attack_index = 0
         self.charge_vx = 0.0

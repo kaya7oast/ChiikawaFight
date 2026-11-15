@@ -2,7 +2,7 @@
 Kani (250 HP, 2.95s attack cooldown, 3-move cycle)
 - Attack 1 BOOK TOSS: 4 big books thrown in a cross (90 deg apart), each bounces off walls
   5 times, 10 dmg on hit.
-- Attack 2 READING: runs to the middle and reads; random letters fly at the enemy (5 dmg each).
+- Attack 2 READING: runs to the middle and reads; random letters fly at the enemy (6 dmg each).
   Takes 50% less damage while reading.
 - Passive MOMONGA ASSIST: every 15s Momonga charges across the arena (35 dmg).
 - Attack 3 CLAW SNIP: two frontal crab-claw snips (like Anoko's claws), each with a short
@@ -38,11 +38,11 @@ class BookVolley:
 
 
 class BookProjectile:
-    def __init__(self, x, y, angle, owner, volley, color):
+    def __init__(self, x, y, angle, owner, volley, color, bounces=5):
         self.x, self.y, self.owner, self.volley, self.color = x, y, owner, volley, color
         self.vx, self.vy = math.cos(angle) * 400, math.sin(angle) * 400
         self.radius = 18
-        self.bounces = 5
+        self.bounces = bounces
         self.spin = random.uniform(0, 360)
         self.alive = True
 
@@ -98,7 +98,7 @@ class LetterProjectile:
             return
         for e in enemies:
             if e.alive and not e.in_air and math.hypot(self.x - e.x, self.y - e.y) <= self.radius + e.radius:
-                e.receive_damage(5.0, self.owner, world)
+                e.receive_damage(6.0, self.owner, world)
                 self.alive = False
                 return
 
