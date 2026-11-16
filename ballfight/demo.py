@@ -246,12 +246,10 @@ class IntroDemo:
 
         # name + tag on the other side
         tx = int((WIDTH * 0.68 if from_left else WIDTH * 0.32) + ox)
-        tag = f"{self.side} SIDE"
-        draw_outlined_text(surf, get_font(16), tag, _lighten(col, 0.7), INK, (tx, cy - 54), 2)
         name = self.info["name"]
         f = fit_font(name, 250, 42, 18)
-        draw_outlined_text(surf, f, name, WHITE, INK, (tx, cy - 8), 3)
-        draw_outlined_text(surf, get_font(18), "ENTERS THE ARENA!", (255, 236, 150), INK, (tx, cy + 40), 2)
+        draw_outlined_text(surf, f, name, WHITE, INK, (tx, cy - 18), 3)
+        draw_outlined_text(surf, get_font(18), "ENTERS THE ARENA!", (255, 236, 150), INK, (tx, cy + 30), 2)
 
     def _draw_header(self, surf):
         col, col2 = self._colors()
