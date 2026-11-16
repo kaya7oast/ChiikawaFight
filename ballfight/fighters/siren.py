@@ -20,7 +20,8 @@ from ..audio import *
 from ..effects import *
 from ..world_objects import *
 from ..drawing import *
-from ..registry import register_sprite, register_roster
+from ..registry import register_sprite, register_roster, register_image
+from ..assets import ASSETS
 from ..fonts import get_font
 from .base import BaseFighter
 
@@ -44,6 +45,25 @@ def draw_fish_tail(surf, cx, cy, ang, length, col):
         a = (cx + ux * length * k + px * w0 * 0.8, cy + uy * length * k + py * w0 * 0.8)
         b = (cx + ux * length * k - px * w0 * 0.8, cy + uy * length * k - py * w0 * 0.8)
         pygame.draw.arc(surf, (40, 110, 140), (min(a[0], b[0]) - 4, min(a[1], b[1]) - 4, abs(a[0] - b[0]) + 8, abs(a[1] - b[1]) + 8), 0, math.pi, 2)
+
+_TAIL_CACHE = {}
+
+
+def draw_siren_tail(surf, cx, cy, ang, length):
+    """Siren's real tail, cropped from her sprite (assets/siren_tail.png, fin pointing up)."""
+    img = ASSETS.get("SIREN_TAIL")
+    if not img:
+        draw_fish_tail(surf, cx, cy, ang, length * 0.7, (90, 190, 220))
+        return
+    key = int(length)
+    if key not in _TAIL_CACHE:
+        w, h = img.get_size()
+        s = length / h
+        _TAIL_CACHE[key] = pygame.transform.smoothscale(img, (max(1, int(w * s)), max(1, int(length))))
+    rot = pygame.transform.rotate(_TAIL_CACHE[key], -math.degrees(ang) - 90)
+    mid = (cx + math.cos(ang) * length * 0.45, cy + math.sin(ang) * length * 0.45)
+    surf.blit(rot, rot.get_rect(center=(int(mid[0]), int(mid[1]))))
+
 
 SIREN_TEAL = (60, 165, 200)
 MERMAID_PINK = (240, 135, 170)
@@ -407,7 +427,7 @@ class SirenFighter(BaseFighter):
             p = 1.0 - self.state_timer / TAIL_WINDUP_TIME          # 0 -> 1 as the slam nears
             # tail rises up behind her and wiggles, then (at p=1) slams down
             ang = -math.pi / 2 + math.sin(p * 18) * 0.25 * (1 - p)
-            draw_fish_tail(surf, cx, cy, ang, int(self.radius * (1.2 + 0.9 * p)), (90, 190, 220))
+            draw_siren_tail(surf, cx, cy, ang, int(self.radius * (1.9 + 1.2 * p)))
             # warning: pulsing ring + "!"
             pr = vis_r + 10 + int(math.sin(p * 30) * 4)
             pygame.draw.circle(surf, (240, 90, 80), (cx, cy), pr, 3)
@@ -482,6 +502,7 @@ class SirenTeam:
             f.update(dt, enemies, world)
 
 
+register_image("SIREN_TAIL", "siren_tail")
 register_sprite("SIREN", SIREN_TEAL, image="siren", name="Siren")
 register_sprite("SIREN_ENRAGED", (220, 70, 80), image="siren_enraged", name="Siren")
 register_sprite("MERMAID", MERMAID_PINK, image="mermaid", name="Mermaid")

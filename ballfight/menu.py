@@ -23,6 +23,7 @@ class SelectMenu:
         self.active = ("LEFT", 0)
         self.hits = []      # (rect, action) built each draw
         self.flash = {}     # action -> timer
+        self.intro_on = True  # play the character cut-in + demo before each match
 
     # ---------- what the game reads ----------
     def picks(self, side):
@@ -66,6 +67,8 @@ class SelectMenu:
                 self.active = order[(order.index(self.active) + 1) % len(order)]
             elif kind == "RANDOM":
                 self.randomize()
+            elif kind == "INTRO":
+                self.intro_on = not self.intro_on
             elif kind == "FIGHT":
                 return "FIGHT"
             return None
@@ -108,6 +111,18 @@ class SelectMenu:
             rect = pygame.Rect(WIDTH // 2 - 130 + i * 136, 66, 124, 40)
             self._button(surf, rect, f"{m} v {m}", (250, 205, 90) if self.mode == m else (235, 230, 240),
                          ("MODE", m), selected=self.mode == m)
+
+        # intro demo toggle (top-right pill)
+        tr = pygame.Rect(WIDTH - 126, 70, 114, 32)
+        on = self.intro_on
+        pygame.draw.rect(surf, (250, 205, 90) if on else (225, 218, 232), tr, border_radius=16)
+        pygame.draw.rect(surf, INK, tr, 2, border_radius=16)
+        knob_x = tr.right - 16 if on else tr.x + 16
+        pygame.draw.circle(surf, WHITE, (knob_x, tr.centery), 11)
+        pygame.draw.circle(surf, INK, (knob_x, tr.centery), 11, 2)
+        lbl = get_font(12).render("INTRO ON" if on else "INTRO OFF", True, INK)
+        surf.blit(lbl, lbl.get_rect(center=(tr.centerx + (-10 if on else 10), tr.centery)))
+        self.hits.append((tr, ("INTRO",)))
 
         # slots
         top = 122

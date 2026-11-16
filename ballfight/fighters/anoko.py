@@ -123,7 +123,7 @@ class AnokoFighter(BaseFighter):
                 if nearest:
                     self.weapon_angle = math.atan2(nearest.y - self.y, nearest.x - self.x)
                 # Slight forward lunge toward target on each swipe
-                lunge_step = 32.0
+                lunge_step = 42.0
                 self.x += math.cos(self.weapon_angle) * lunge_step
                 self.y += math.sin(self.weapon_angle) * lunge_step
                 self.clamp_to_walls()

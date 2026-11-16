@@ -57,7 +57,7 @@ class UsagiFoodItem:
 
 
 class WatermelonSeedProjectile:
-    """Usagi's 2nd attack: 5 fast watermelon seeds, 9 damage each, 1 wall bounce each."""
+    """Usagi's 2nd attack: 5 fast watermelon seeds, 7 damage each, 1 wall bounce each."""
     def __init__(self, x, y, angle, owner):
         self.x = x
         self.y = y
@@ -90,7 +90,7 @@ class WatermelonSeedProjectile:
         for e in enemies:
             if e.alive and math.hypot(self.x - e.x, self.y - e.y) <= self.radius + e.radius:
                 self.alive = False
-                e.receive_damage(9.0, self.owner, world)
+                e.receive_damage(7.0, self.owner, world)
                 break
 
     def draw(self, surf):

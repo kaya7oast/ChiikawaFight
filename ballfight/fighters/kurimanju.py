@@ -2,7 +2,7 @@
 Kurimanju (250 HP, 2.85s attack cooldown, 2-move cycle)
 - Attack 1 BURP: drinks, then TWO shockwaves hit the whole arena (0.4s apart). Each: closer =
   more damage (20 -> 5) and more knockback.
-- Attack 2 STICK SWIPE: lunges in and swipes: 17 dmg, heavy knockback (wall slams hurt 3-9
+- Attack 2 STICK SWIPE: lunges in and swipes: 5-17 dmg (longer lunge = more damage), heavy knockback (wall slams hurt 3-9
   depending on speed), and dazes for 3s (enemy attack bar fills 50% slower).
 - Passive BEER: every 10s drinks a beer, 30% each good / 20% each bad effect until the next beer:
   +35% damage | +25% defence | takes 20% more damage | attacks 30% slower.
@@ -24,6 +24,7 @@ from .base import BaseFighter
 KURI_BROWN = (176, 118, 70)
 BEER_GOLD = (246, 196, 60)
 ARENA_DIAG = math.hypot(ARENA_RECT.width, ARENA_RECT.height)
+SWIPE_FULL_DIST = 280.0  # lunge this far (or more) for the full 17 dmg
 
 BEER_WEIGHTS = [30, 30, 20, 20]  # good, good, bad, bad (percent)
 BEER_EFFECTS = [
@@ -82,6 +83,7 @@ class KurimanjuFighter(BaseFighter):
         self.buff = None
         self.target = None
         self.swipe_done = False
+        self.dash_dist = 0.0
 
     # ---- passive ----
     def drink_beer(self, world):
@@ -145,9 +147,11 @@ class KurimanjuFighter(BaseFighter):
             if tgt:
                 ang = math.atan2(tgt.y - self.y, tgt.x - self.x)
                 self.weapon_angle = ang - 1.3
+                ox, oy = self.x, self.y
                 self.x += math.cos(ang) * 560 * dt
                 self.y += math.sin(ang) * 560 * dt
                 self.clamp_to_walls()
+                self.dash_dist += math.hypot(self.x - ox, self.y - oy)
                 if math.hypot(tgt.x - self.x, tgt.y - self.y) <= self.radius + tgt.radius + 40:
                     self.state_timer = 0
             if self.state_timer <= 0:
@@ -162,10 +166,13 @@ class KurimanjuFighter(BaseFighter):
             self.weapon_angle += 9.5 * dt
             if not self.swipe_done:
                 self.swipe_done = True
+                # more distance lunged = harder hit: 5 dmg (no lunge) -> 17 dmg (full ~300px lunge)
+                power = max(0.0, min(1.0, self.dash_dist / SWIPE_FULL_DIST))
+                dmg = 5 + 12 * power
                 for e in living:
                     d = math.hypot(e.x - self.x, e.y - self.y)
                     if d <= self.radius + e.radius + 62:
-                        e.receive_damage(17 * self.dmg_mult, self, world)
+                        e.receive_damage(dmg * self.dmg_mult, self, world)
                         e.apply_daze(3.0)
                         if d > 0:
                             e.apply_knockback((e.x - self.x) / d * 1250, (e.y - self.y) / d * 1250, self, wall_damage=True)
@@ -187,6 +194,7 @@ class KurimanjuFighter(BaseFighter):
                     self.state = "SWIPE_DASH"
                     self.state_timer = 0.55  # dash range (~300px)
                     self.target = nearest
+                    self.dash_dist = 0.0
                 self.attack_index = (self.attack_index + 1) % 2
 
     def draw(self, surf, enemies):

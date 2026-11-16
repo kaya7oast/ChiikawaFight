@@ -23,7 +23,7 @@ class UsagiFighter(BaseFighter):
     """
     Usagi (250 HP, 2.9s attack cooldown, 3-move cycle):
     - Attack 1: 3-hit spin (12 damage per hit), slightly tracking the enemy.
-    - Attack 2: Spits 5 fast watermelon seeds toward the enemy (9 damage each, 1 wall bounce each).
+    - Attack 2: Spits 5 fast watermelon seeds toward the enemy (7 damage each, 1 wall bounce each).
     - Attack 3: Crazy Bounce Frenzy for 5.0s! Speeds up (2.3x), takes 30% less damage, and deals
                 14 damage whenever he collides with an enemy. +0.2s per dessert eaten since the
                 last Crazy Bounce (resets after each one).
