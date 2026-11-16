@@ -24,9 +24,9 @@ class UsagiFighter(BaseFighter):
     Usagi (250 HP, 2.9s attack cooldown, 3-move cycle):
     - Attack 1: 3-hit spin (12 damage per hit), slightly tracking the enemy.
     - Attack 2: Spits 5 fast watermelon seeds toward the enemy (7 damage each, 1 wall bounce each).
-    - Attack 3: Crazy Bounce Frenzy for 5.0s! Speeds up (2.3x), takes 30% less damage, and deals
+    - Attack 3: "Yahoo!" bounce frenzy for 5.0s! Speeds up (2.3x), takes 30% less damage, and deals
                 14 damage whenever he collides with an enemy. +0.2s per dessert eaten since the
-                last Crazy Bounce (resets after each one).
+                last Yahoo! (resets after each one).
     - Passive Food: Every 2.0s, 30% chance for food to spawn. Usagi eats for 0.8s (pausing CD)
                     to heal +15 HP; enemies touching it first heal +1 HP.
     """
@@ -49,7 +49,7 @@ class UsagiFighter(BaseFighter):
     def complete_eating(self, world):
         play_voice("usagi_unayaha", cooldown=1.5)
         self.desserts_eaten += 1
-        world["popups"].append(FloatingPopup(self.x, self.y - 52, f"crazy +0.2s ({5 + 0.2 * self.desserts_eaten:.1f}s)",
+        world["popups"].append(FloatingPopup(self.x, self.y - 52, f"yahoo! +0.2s ({5 + 0.2 * self.desserts_eaten:.1f}s)",
                                              USAGI_YELLOW, WHITE, 14, 1.0))
         if self.target_food and self.target_food.alive:
             self.target_food.alive = False
@@ -217,6 +217,7 @@ class UsagiFighter(BaseFighter):
                     self.crazy_wall_hits = 0
                     SFX_CRAZY.play()
                     play_voice("usagi_yaha", "usagi_fight", cooldown=0)
+                    world["popups"].append(FloatingPopup(self.x, self.y - 56, "YAHOO!", USAGI_YELLOW, WHITE, 26, 1.0))
                 self.attack_index = (self.attack_index + 1) % 3
 
     def draw(self, surf, enemies):
@@ -224,7 +225,7 @@ class UsagiFighter(BaseFighter):
             return
         cx, cy = int(self.x), int(self.y)
 
-        # Crazy Bounce speed afterimages
+        # Yahoo! speed afterimages
         for ax, ay, life in self.afterimages:
             r = max(4, int(self.radius * (life / 0.16)))
             pygame.draw.circle(surf, (250, 225, 120), (int(ax), int(ay)), r, 2)

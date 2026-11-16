@@ -10,6 +10,7 @@ import pygame
 
 pygame.mixer.pre_init(22050, -16, 2, 512)
 pygame.init()
+print(f"[Audio] mixer opened as {pygame.mixer.get_init()}")
 
 
 class _Silent:
@@ -23,7 +24,21 @@ def make_sfx(f0, f1, dur, wave="sine", vol=0.14):
         return _Silent()
     sr, size, channels = init
     n = int(sr * dur)
-    buf = array.array("h")
+    # match the sample format the mixer really opened with (Windows often gives 32-bit float,
+    # and an int16 buffer played as float is silent)
+    if size == 32:
+        code, scale, offset = "f", 1.0, 0.0
+    elif size == -32:
+        code, scale, offset = "i", 2147483647, 0
+    elif size == 16:
+        code, scale, offset = "H", 32767, 32768
+    elif size == 8:
+        code, scale, offset = "B", 127, 128
+    elif size == -8:
+        code, scale, offset = "b", 127, 0
+    else:
+        code, scale, offset = "h", 32767, 0
+    buf = array.array(code)
     phase = 0.0
     for i in range(n):
         t = i / n
@@ -35,7 +50,9 @@ def make_sfx(f0, f1, dur, wave="sine", vol=0.14):
             s = random.uniform(-1, 1)
         else:
             s = math.sin(phase)
-        v = int(s * (1.0 - t * 0.99) * vol * 32767)
+        v = s * (1.0 - t * 0.99) * vol * scale + offset
+        if code != "f":
+            v = int(v)
         for _ in range(channels):
             buf.append(v)
     try:

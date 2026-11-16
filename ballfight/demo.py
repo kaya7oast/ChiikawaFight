@@ -36,7 +36,7 @@ MOVES = {
               ("Counter", "parries hits and strikes back")],
     "USAGI": [("Spin", "3-hit tracking spin"),
               ("Seeds", "spits 5 watermelon seeds"),
-              ("Crazy Bounce", "5s frenzy, faster + tankier"),
+              ("Yahoo!", "5s bounce frenzy, faster + tankier"),
               ("Snacks", "eats food to heal")],
     "ANOKO": [("Triple Claw", "three lunging claw swipes"),
               ("Pounce Throw", "grabs, swings, hurls into a wall"),

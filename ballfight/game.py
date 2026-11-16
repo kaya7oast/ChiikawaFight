@@ -4,8 +4,11 @@ import random
 
 import pygame
 
-from .config import WIDTH, HEIGHT, FPS
+from .config import WIDTH, HEIGHT, FPS, WHITE, ARENA_RECT
 from .assets import init_assets
+from .audio import SFX_WARN, SFX_CHARGE
+from .fonts import get_font
+from .drawing import draw_outlined_text
 from .voices import init_voices
 from .teams import build_side
 from .menu import SelectMenu
@@ -14,6 +17,33 @@ from . import fighters  # noqa: F401  (registers all characters)
 from .scene import build_background, build_arena
 from .sim import new_world, step_battle, step_fx, draw_battle
 from .ui import draw_team_ui, draw_vs_badge, draw_winner, draw_footer, BUTTONS, card_rect
+
+
+READY_TIME, GO_TIME = 1.1, 0.7  # "READY?" freezes the fight, "GO!" shows as it starts
+
+
+def draw_ready_go(surf, timer):
+    """timer counts down from READY_TIME + GO_TIME."""
+    if timer > GO_TIME:
+        t = (READY_TIME + GO_TIME - timer) / READY_TIME      # 0 -> 1 during READY?
+        text, col, size = "READY?", (255, 150, 180), 64
+    else:
+        t = 1 - timer / GO_TIME                               # 0 -> 1 during GO!
+        text, col, size = "GO!", (250, 205, 90), 92
+    pop = min(1.0, t / 0.18)
+    scale = 1.6 - 0.6 * (1 - (1 - pop) ** 3)                  # slams in from big to normal
+    cx, cy = ARENA_RECT.center
+    # angled band behind the text
+    band_h = int(110 * min(1.0, t / 0.12))
+    if band_h > 2:
+        band = pygame.Surface((WIDTH, band_h), pygame.SRCALPHA)
+        band.fill((40, 32, 52, 170))
+        band = pygame.transform.rotate(band, 6)
+        surf.blit(band, band.get_rect(center=(cx, cy)))
+    font = get_font(int(size * scale))
+    alpha_out = timer < 0.15 and text == "GO!"
+    if not alpha_out:
+        draw_outlined_text(surf, font, text, col, (40, 32, 52), (cx, cy), 4)
 
 
 async def main():
@@ -37,6 +67,7 @@ async def main():
     team_left, team_right, world, match_time = reset_match()
     winner, winner_side, winner_anim = None, None, 0.0
     pressed = {}  # button -> flash timer (tap feedback)
+    ready_timer = 0.0  # > 0 while READY? / GO! is showing
 
     while True:
         dt = min(clock.tick(FPS) / 1000.0, 0.05)
@@ -90,6 +121,8 @@ async def main():
                 screen_mode = "FIGHT"
                 team_left, team_right, world, match_time = reset_match()
                 winner, winner_side, winner_anim = None, None, 0.0
+                ready_timer = READY_TIME + GO_TIME
+                SFX_WARN.play()
             await asyncio.sleep(0)
             continue
 
@@ -110,6 +143,7 @@ async def main():
                     screen_mode = "FIGHT"
                     team_left, team_right, world, match_time = reset_match()
                     winner, winner_side, winner_anim = None, None, 0.0
+                    ready_timer = 0.0
         for k in list(pressed):
             pressed[k] -= dt
             if pressed[k] <= 0:
@@ -126,7 +160,12 @@ async def main():
         all_fighters = team_left.fighters + team_right.fighters
 
         # ---------------- SIMULATION ----------------
-        if winner is None:
+        if ready_timer > 0:
+            was_ready = ready_timer > GO_TIME
+            ready_timer = max(0.0, ready_timer - dt)
+            if was_ready and ready_timer <= GO_TIME:
+                SFX_CHARGE.play()
+        if winner is None and ready_timer <= GO_TIME:
             match_time += dt
             step_battle(team_left, team_right, world, dt)
             if not any(f.alive and f.core for f in team_right.fighters):
@@ -144,6 +183,8 @@ async def main():
         draw_vs_badge(frame, match_time)
         draw_battle(frame, team_left, team_right, world, match_time, arena_surf, arena_pos)
 
+        if ready_timer > 0:
+            draw_ready_go(frame, ready_timer)
         if winner:
             draw_winner(frame, winner, winner_side, winner_anim)
 
